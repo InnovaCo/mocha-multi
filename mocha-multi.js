@@ -17,8 +17,6 @@ var stderr = process.stderr;
 
 function MochaMulti(runner, options) {
   var setup;
-  // keep track of reporters that have a done method.
-  this.reportersWithDone = [];
   var reporters = reporterOption;
   if (reporters && Object.keys(reporters).length > 0) {
     debug("options %j", options);
@@ -42,7 +40,7 @@ function MochaMulti(runner, options) {
     setup = parseSetup();
   }
   debug("setup %j", setup);
-  var streams = initReportersAndStreams(runner, setup, this);
+  var streams = initReportersAndStreams(runner, setup);
   // Remove nulls
   streams = streams.filter(identity);
 
@@ -51,33 +49,6 @@ function MochaMulti(runner, options) {
     awaitStreamsOnExit(streams);
   }
 }
-
-/**
- * Override done to allow done processing for any reporters that have a done method.
- */
-MochaMulti.prototype.done = function (failures, fn) {
-  var self = this;
-
-  if(self.reportersWithDone.length !== 0) {
-    var count = self.reportersWithDone.length;
-    debug('Awaiting on %j reporters to invoke done callback.', count);
-    var cb = function() {
-      if(--count === 0) {
-        debug('All reporters invoked done callback.');
-        fn(failures);
-      } else {
-        debug('Awaiting on %j reporters to invoke done callback.', count);
-      }
-    };
-
-    self.reportersWithDone.forEach(function(r) {
-      r.done(failures, cb);
-    });
-  } else {
-    debug('No reporters have done method, completing.');
-    fn(failures);
-  }
-};
 
 var msgs = {
   no_definitions: "reporter definitions should be set in \
@@ -112,7 +83,7 @@ function parseReporter(definition) {
   return pair;
 }
 
-function initReportersAndStreams(runner, setup, multi) {
+function initReportersAndStreams(runner, setup) {
   return setup.map(function(definition) {
     var reporter=definition[0], outstream=definition[1], options=definition[2]
 
@@ -125,13 +96,7 @@ function initReportersAndStreams(runner, setup, multi) {
 
     withReplacedStdout(stream, function() {
       var Reporter = resolveReporter(reporter);
-      var r = new Reporter(shim, options || {});
-      // If the reporter possess a done() method register it so we can
-      // wait for it to complete when done.
-      if(r && r.done) {
-        multi.reportersWithDone.push(r);
-      }
-      return r;
+      return new Reporter(shim, options || {});
     })
 
     return stream;
