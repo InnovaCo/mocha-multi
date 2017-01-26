@@ -4,6 +4,7 @@ var debug = require('debug')('mocha:multi');
 var path = require('path');
 var isString = require('is-string');
 var mkdirp = require('mkdirp');
+var reporterOption = require('../../reporterOptions')
 
 // Let mocha decide about tty early
 require('mocha/lib/reporters/base');
@@ -18,7 +19,7 @@ function MochaMulti(runner, options) {
   var setup;
   // keep track of reporters that have a done method.
   this.reportersWithDone = [];
-  var reporters = (options && options.reporterOptions);
+  var reporters = reporterOption;
   if (reporters && Object.keys(reporters).length > 0) {
     debug("options %j", options);
     setup = [];
